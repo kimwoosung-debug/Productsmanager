@@ -25,6 +25,7 @@ public class ProductClient {
         System.out.println("[클라이언트] 서버에 연결됨");
 
         list();
+
     }
 
     public void menu() throws IOException {

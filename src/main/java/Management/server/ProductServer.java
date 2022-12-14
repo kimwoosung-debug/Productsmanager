@@ -2,6 +2,7 @@ package Management.server;
 
 
 import Management.Product;
+import Management.db.ProductRepository;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -10,10 +11,8 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.List;
+import java.sql.Connection;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -22,6 +21,8 @@ public class ProductServer {
     private ExecutorService threadPool = Executors.newFixedThreadPool(100);
     private List<Product> products = Collections.synchronizedList(new ArrayList<>());
     private int sequence;
+    private Connection conn = null;
+    private ProductRepository db;
 
     public static void main(String[] args) {
         ProductServer productServer = new ProductServer();
@@ -36,6 +37,8 @@ public class ProductServer {
     public void start() throws IOException {
         serverSocket = new ServerSocket(50001);
         System.out.println("[서버] 시작됨");
+        db = new ProductRepository();
+        products = db.getProducts();
 
         Thread thread = new Thread(() -> {
             try {
@@ -138,7 +141,9 @@ public class ProductServer {
             product.setName(data.getString("name"));
             product.setPrice(data.getInt("price"));
             product.setStock(data.getInt("stock"));
-            products.add(product);
+            db.add(product);
+
+            products = db.getProducts();
 
             JSONObject response = new JSONObject();
             response.put("status", "success");
@@ -149,15 +154,15 @@ public class ProductServer {
 
         public void update(JSONObject request) throws IOException {
             JSONObject data = request.getJSONObject("data");
-            int no = data.getInt("no");
-            for(int i = 0; i < products.size(); i++) {
-                Product product = products.get(i);
-                if(product.getNo() == no) {
-                    product.setName(data.getString("name"));
-                    product.setPrice(data.getInt("price"));
-                    product.setStock(data.getInt("stock"));
-                }
-            }
+            Product product =new Product();
+
+            product.setName(data.getString("name"));
+            product.setPrice(data.getInt("price"));
+            product.setStock(data.getInt("stock"));
+
+            db.productsUpdate(product);
+            products = db.getProducts();
+
             JSONObject response = new JSONObject();
             response.put("status", "success");
             response.put("data", "");
@@ -168,13 +173,10 @@ public class ProductServer {
         public void delete(JSONObject request) throws IOException {
             JSONObject data = request.getJSONObject("data");
             int no = data.getInt("no");
-            Iterator<Product> itr = products.iterator();
-            while(itr.hasNext()) {
-                Product product = itr.next();
-                if(product.getNo() == no) {
-                    itr.remove();
-                }
-            }
+
+            db.productsdelete(no);
+            products = db.getProducts();
+
             JSONObject response = new JSONObject();
             response.put("status", "success");
             response.put("data", "");
